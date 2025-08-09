@@ -28,18 +28,21 @@ class DozerStatusIcon(NSObject):
     def init(self):
         self = objc.super(DozerStatusIcon, self).init()
         if self:
-            self.normal_length = 25
-            self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(self.normal_length)
+            # 创建分隔符（用于隐藏左侧图标）
+            self.separator = NSStatusBar.systemStatusBar().statusItemWithLength_(1)
+            # 创建控制器（保持可见用于操作）  
+            self.controller = NSStatusBar.systemStatusBar().statusItemWithLength_(25)
             self.is_hiding_others = False
-            self.setup_icon()
+            self.setup_icons()
             self.setup_menu()
         return self
     
-    def setup_icon(self):
+    def setup_icons(self):
+        # 设置控制器图标（可点击的白色圆点）
         view = ClickableStatusView.alloc().initWithFrame_callback_(
             NSRect(NSPoint(0, 0), NSSize(22, 22)), self.toggle_hiding
         )
-        self.status_item.setView_(view)
+        self.controller.setView_(view)
     
     def setup_menu(self):
         menu = NSMenu.alloc().init()
@@ -54,7 +57,7 @@ class DozerStatusIcon(NSObject):
         quit_item.setTarget_(self)
         menu.addItem_(quit_item)
         
-        self.status_item.setMenu_(menu)
+        self.controller.setMenu_(menu)
     
     def toggle_hiding(self):
         if self.is_hiding_others:
@@ -65,13 +68,14 @@ class DozerStatusIcon(NSObject):
     def hide_others(self):
         if not self.is_hiding_others:
             self.is_hiding_others = True
-            # 使用较小的隐藏长度，确保自己图标仍可见
-            self.status_item.setLength_(500.0)
+            # 扩展分隔符来隐藏左侧图标
+            self.separator.setLength_(500.0)
     
     def show_others(self):
         if self.is_hiding_others:
             self.is_hiding_others = False
-            self.status_item.setLength_(self.normal_length)
+            # 恢复分隔符正常大小
+            self.separator.setLength_(1)
     
     @objc.IBAction
     def show_all_(self, sender):
