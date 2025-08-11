@@ -211,7 +211,7 @@ class DozerStatusIcon(NSObject):
         icon_menu = NSMenu.alloc().init()
         config = load_config()
         current_icon = config.get("current_icon", "icons/icons.gif")
-        available_icons = config.get("available_icons", ["icons/icons.gif"])
+        available_icons = scan_gif_files()  # 动态扫描
         
         for icon_path in available_icons:
             icon_name = os.path.basename(icon_path)
@@ -231,12 +231,6 @@ class DozerStatusIcon(NSObject):
         icon_menu_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("选择图标", "", "")
         icon_menu_item.setSubmenu_(icon_menu)
         menu.addItem_(icon_menu_item)
-        
-        menu.addItem_(NSMenuItem.separatorItem())
-        
-        reload_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("重新加载图标", "reloadIcon:", "r")
-        reload_item.setTarget_(self)
-        menu.addItem_(reload_item)
         
         menu.addItem_(NSMenuItem.separatorItem())
         
@@ -320,15 +314,6 @@ class DozerStatusIcon(NSObject):
                     item.setState_(0)  # NSOffState
         except Exception as e:
             print(f"更新菜单状态失败: {e}")
-    
-    @objc.IBAction
-    def reloadIcon_(self, sender):
-        """重新加载图标"""
-        try:
-            self.controller_view.loadGifFrames()
-            print("图标已重新加载")
-        except Exception as e:
-            print(f"重新加载图标失败: {e}")
     
     @objc.IBAction
     def quit_(self, sender):

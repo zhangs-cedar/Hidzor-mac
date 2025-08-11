@@ -16,22 +16,18 @@
 2. 编辑 `config.yaml` 文件：
    ```yaml
    current_icon: "icons/你的图标.gif"  # 当前使用的图标
-   available_icons:
-     - "icons/icons.gif"
-     - "icons/你的图标.gif"
    ```
-3. 重启应用或右键选择"重新加载图标"
+3. 重启应用，系统会自动扫描 `icons/` 目录下的所有 GIF 文件
 
 ### 右键菜单
 
-- **选择图标**: 切换不同的图标
-- **重新加载图标**: 重新加载配置文件中的图标
+- **选择图标**: 切换不同的图标（自动扫描 `icons/` 目录）
 - **退出**: 退出应用
 
 ## 配置说明
 
 - `current_icon`: 当前使用的图标路径
-- `available_icons`: 可选择的图标列表
+- `available_icons`: 系统会自动扫描 `icons/` 目录下的所有 GIF 文件
 
 ## 运行
 
