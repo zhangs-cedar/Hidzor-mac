@@ -23,15 +23,24 @@ class ClickableStatusView(NSView):
         if self.callback:
             self.callback()
     
+    def rightMouseDown_(self, event):
+        # 处理右键点击，显示菜单
+        if hasattr(self, 'menu') and self.menu:
+            self.menu.popUpMenuPositioningItem_atLocation_inView_(
+                None, event.locationInWindow(), self
+            )
+    
     def setHidingState_(self, hiding):
         self.is_hiding = hiding
         self.setNeedsDisplay_(True)
     
     def start_animation(self):
-        # 启动篮球动画定时器
+        print("启动招财猫动画...")
+        # 启动招财猫动画定时器
         self.animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             0.2, self, "updateAnimation:", None, True
         )
+        print("动画已启动")
     
     def updateAnimation_(self, sender):
         try:
@@ -39,6 +48,8 @@ class ClickableStatusView(NSView):
             self.animation_frame = (self.animation_frame + 1) % 8
             # 招财猫动画（招财手势摆动）
             self.setNeedsDisplay_(True)
+            if self.animation_frame % 20 == 0:  # 每20帧输出一次，避免刷屏
+                print(f"动画帧: {self.animation_frame}")
         except Exception as e:
             print(f"Animation error: {e}")
     
@@ -181,28 +192,41 @@ class ClickableStatusView(NSView):
 
 class DozerStatusIcon(NSObject):
     def init(self):
+        print("初始化状态栏图标...")
         self = objc.super(DozerStatusIcon, self).init()
         if self:
             # 创建分隔符（用于隐藏左侧图标）
+            print("创建分隔符...")
             self.separator = NSStatusBar.systemStatusBar().statusItemWithLength_(8)
             # 创建控制器（保持可见用于操作）  
+            print("创建控制器...")
             self.controller = NSStatusBar.systemStatusBar().statusItemWithLength_(25)
             self.is_hiding_others = False
-            self.setup_icons()
-            self.setup_menu()
+            self.setup_menu()  # 先创建菜单
+            self.setup_icons()  # 再设置图标
+            print("状态栏图标初始化完成")
         return self
     
     def setup_icons(self):
+        print("设置图标...")
         # 设置控制器图标（动态图标）
         self.controller_view = ClickableStatusView.alloc().initWithFrame_callback_(
             NSRect(NSPoint(0, 0), NSSize(22, 22)), self.toggle_hiding
         )
+        
+        # 将菜单传递给视图，用于右键点击
+        if hasattr(self, 'menu'):
+            self.controller_view.menu = self.menu
+            self.controller.setMenu_(self.menu)
+        
         self.controller.setView_(self.controller_view)
         
         # 设置分隔符图标（显示为小圆点）
         self.setup_separator_icon()
+        print("图标设置完成")
     
     def setup_menu(self):
+        print("创建菜单...")
         menu = NSMenu.alloc().init()
         
         show_all = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("显示所有", "show_all:", "")
@@ -215,9 +239,12 @@ class DozerStatusIcon(NSObject):
         quit_item.setTarget_(self)
         menu.addItem_(quit_item)
         
-        self.controller.setMenu_(menu)
+        self.menu = menu  # 保存菜单引用
+        print("菜单创建完成")
+        return menu
     
     def setup_separator_icon(self):
+        print("设置分隔符图标...")
         # 创建分隔符图标（小圆点）
         image = NSImage.alloc().initWithSize_(NSSize(8, 8))
         image.lockFocus()
@@ -227,8 +254,10 @@ class DozerStatusIcon(NSObject):
         image.unlockFocus()
         image.setTemplate_(True)
         self.separator.setImage_(image)
+        print("分隔符图标设置完成")
     
     def toggle_hiding(self):
+        print("切换隐藏状态...")
         if self.is_hiding_others:
             self.show_others()
         else:
@@ -236,28 +265,40 @@ class DozerStatusIcon(NSObject):
     
     def hide_others(self):
         if not self.is_hiding_others:
+            print("隐藏其他图标...")
             self.is_hiding_others = True
             # 扩展分隔符来隐藏左侧图标，并隐藏分隔符图标
             self.separator.setLength_(500.0)
             self.separator.setImage_(None)
+            # 为隐藏区域添加点击事件
+            self.separator.setTarget_(self)
+            self.separator.setAction_("show_all:")
             # 更新控制器图标状态
             self.controller_view.setHidingState_(True)
+            print("其他图标已隐藏")
     
     def show_others(self):
         if self.is_hiding_others:
+            print("显示所有图标...")
             self.is_hiding_others = False
             # 恢复分隔符正常大小，并显示分隔符图标
             self.separator.setLength_(8)
             self.setup_separator_icon()
+            # 移除隐藏区域的点击事件
+            self.separator.setTarget_(None)
+            self.separator.setAction_(None)
             # 更新控制器图标状态
             self.controller_view.setHidingState_(False)
+            print("所有图标已显示")
     
     @objc.IBAction
     def show_all_(self, sender):
+        print("菜单：显示所有")
         self.show_others()
     
     @objc.IBAction
     def quit_(self, sender):
+        print("菜单：退出程序")
         if self.is_hiding_others:
             self.show_others()
         # 停止动画定时器
@@ -267,9 +308,11 @@ class DozerStatusIcon(NSObject):
 
 
 def main():
+    print("启动 Hidzor 状态栏工具...")
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(2)
     DozerStatusIcon.alloc().init()
+    print("程序启动完成，正在运行...")
     app.run()
 
 if __name__ == "__main__":
