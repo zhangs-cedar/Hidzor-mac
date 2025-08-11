@@ -48,8 +48,6 @@ class ClickableStatusView(NSView):
             self.animation_frame = (self.animation_frame + 1) % 8
             # 招财猫动画（招财手势摆动）
             self.setNeedsDisplay_(True)
-            if self.animation_frame % 20 == 0:  # 每20帧输出一次，避免刷屏
-                print(f"动画帧: {self.animation_frame}")
         except Exception as e:
             print(f"Animation error: {e}")
     
