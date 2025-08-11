@@ -266,7 +266,7 @@ class DozerStatusIcon(NSObject):
             print("隐藏其他图标...")
             self.is_hiding_others = True
             # 扩展分隔符来隐藏左侧图标，并隐藏分隔符图标
-            self.separator.setLength_(500.0)
+            self.separator.setLength_(10000.0)
             self.separator.setImage_(None)
             # 为隐藏区域添加点击事件
             self.separator.setTarget_(self)
