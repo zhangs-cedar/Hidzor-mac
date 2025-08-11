@@ -12,25 +12,36 @@ from AppKit import (NSApplication, NSStatusBar, NSMenu, NSMenuItem, NSImage,
 
 def load_config():
     """加载配置文件"""
-    try:
-        config_path = "config.yaml"
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-                return config
-        else:
-            # 默认配置
-            return {
-                "current_icon": "icons/icons.gif",
-                "available_icons": [
-                    "icons/icons.gif",
-                    "icons/icons8-kawaii.gif", 
-                    "icons/icons8-螃蟹.gif"
-                ]
-            }
-    except Exception as e:
-        print(f"配置加载错误: {e}")
-        return {"current_icon": "icons/icons.gif"}
+    config_path = "config.yaml"
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+            # 动态扫描icons文件夹下的所有gif文件
+            config['available_icons'] = scan_gif_files()
+            return config
+    else:
+        # 默认配置
+        return {
+            "current_icon": "icons/icons.gif",
+            "available_icons": scan_gif_files()
+        }
+
+def scan_gif_files():
+    """扫描icons文件夹下的所有gif文件"""
+    gif_files = []
+    icons_dir = "icons"
+    
+    if os.path.exists(icons_dir) and os.path.isdir(icons_dir):
+        for filename in os.listdir(icons_dir):
+            if filename.lower().endswith('.gif'):
+                gif_files.append(os.path.join(icons_dir, filename))
+    
+    # 如果没有找到gif文件，返回默认图标
+    if not gif_files:
+        gif_files = ["icons/icons.gif"]
+    
+    return sorted(gif_files)
+
 
 def save_config(config):
     """保存配置文件"""
@@ -111,13 +122,13 @@ class ClickableStatusView(NSView):
                         if src_x < width and src_y < height:
                             if channels == 4:  # RGBA
                                 r, g, b, a = numpy_array[src_y, src_x]
-                                if r > 100 and g > 100 and b > 100:
+                                if r > 150 and g > 150 and b > 150:
                                     alpha = 0.0
                                 else:
                                     alpha = a / 255.0
                             else:  # RGB
                                 r, g, b = numpy_array[src_y, src_x]
-                                if r > 100 and g > 100 and b > 100:
+                                if r > 150 and g > 150 and b > 150:
                                     alpha = 0.0
                                 else:
                                     alpha = 1.0

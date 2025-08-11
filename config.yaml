@@ -1,5 +1,12 @@
 available_icons:
+- icons/cefed2b50c3f597c1467199eee7f55cc6a18b29c.gif
 - icons/icons.gif
+- icons/icons8-aircraft.gif
+- icons/icons8-birthday-cake.gif
+- icons/icons8-christmas-tree.gif
 - icons/icons8-kawaii.gif
+- icons/icons8-trailer-unloading.gif
+- icons/icons8-卡车.gif
+- icons/icons8-恐龙.gif
 - icons/icons8-螃蟹.gif
-current_icon: icons/icons8-螃蟹.gif
+current_icon: icons/cefed2b50c3f597c1467199eee7f55cc6a18b29c.gif
