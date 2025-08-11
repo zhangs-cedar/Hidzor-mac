@@ -3,7 +3,8 @@
 
 import sys
 import objc
-from Foundation import NSObject, NSTimer
+import imageio
+from Foundation import NSObject, NSTimer, NSData, NSURL
 from AppKit import (NSApplication, NSStatusBar, NSMenu, NSMenuItem, NSImage, 
                     NSColor, NSSize, NSRect, NSPoint, NSBezierPath, NSView)
 
@@ -14,10 +15,72 @@ class ClickableStatusView(NSView):
             self.callback = callback
             self.is_hiding = False
             self.frame = 0
+            self.gif_frames = []
+            self.current_frame = 0
+            self.loadGifFrames()
             self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                0.2, self, "updateFrame:", None, True
+                0.1, self, "updateFrame:", None, True
             )
         return self
+    
+    def loadGifFrames(self):
+        try:
+            # 使用imageio加载GIF文件
+            gif_path = "icons.gif"
+            gif_reader = imageio.get_reader(gif_path)
+            self.gif_frames = []
+            
+            for frame_num, frame in enumerate(gif_reader):
+                # 将numpy数组转换为NSImage
+                frame_image = self.numpy_to_nsimage(frame)
+                if frame_image:
+                    self.gif_frames.append(frame_image)
+            
+            gif_reader.close()
+            print(f"Loaded {len(self.gif_frames)} GIF frames")
+            
+        except Exception as e:
+            print(f"GIF load error: {e}")
+    
+    def numpy_to_nsimage(self, numpy_array):
+        try:
+            # 确保图像是RGB格式
+            if len(numpy_array.shape) == 3:
+                height, width, channels = numpy_array.shape
+                if channels == 4:  # RGBA
+                    # 转换为RGB
+                    rgb_array = numpy_array[:, :, :3]
+                else:
+                    rgb_array = numpy_array
+                
+                # 创建NSImage
+                image = NSImage.alloc().initWithSize_(NSSize(22, 22))
+                image.lockFocus()
+                
+                # 缩放并绘制图像
+                scale_x = width / 22.0
+                scale_y = height / 22.0
+                
+                for y in range(22):
+                    for x in range(22):
+                        # 计算原图对应位置
+                        src_x = int(x * scale_x)
+                        src_y = int(y * scale_y)
+                        
+                        if src_x < width and src_y < height:
+                            r, g, b = rgb_array[src_y, src_x]
+                            color = NSColor.colorWithCalibratedRed_green_blue_alpha_(
+                                r/255.0, g/255.0, b/255.0, 1.0
+                            )
+                            color.setFill()
+                            rect = NSRect(NSPoint(x, 21-y), NSSize(1, 1))
+                            NSBezierPath.bezierPathWithRect_(rect).fill()
+                
+                image.unlockFocus()
+                return image
+        except Exception as e:
+            print(f"Convert error: {e}")
+            return None
     
     def mouseDown_(self, event):
         if self.callback:
@@ -35,13 +98,29 @@ class ClickableStatusView(NSView):
     
     def updateFrame_(self, sender):
         try:
-            self.frame = (self.frame + 1) % 8
+            if self.gif_frames:
+                self.current_frame = (self.current_frame + 1) % len(self.gif_frames)
+            else:
+                self.frame = (self.frame + 1) % 8
             self.setNeedsDisplay_(True)
         except Exception as e:
             print(f"Animation error: {e}")
     
     def drawRect_(self, rect):
-        self.drawCat()
+        if self.gif_frames:
+            self.drawGifIcon()
+        else:
+            self.drawCat()
+    
+    def drawGifIcon(self):
+        try:
+            if self.current_frame < len(self.gif_frames):
+                frame_image = self.gif_frames[self.current_frame]
+                frame_image.drawInRect_(NSRect(NSPoint(0, 0), NSSize(22, 22)))
+        except Exception as e:
+            print(f"GIF draw error: {e}")
+            # 如果GIF绘制失败，回退到猫头
+            self.drawCat()
     
     def drawCat(self):
         try:
