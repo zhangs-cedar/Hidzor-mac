@@ -3,7 +3,8 @@
 
 import sys
 import objc
-from Foundation import NSObject
+import time
+from Foundation import NSObject, NSTimer
 from AppKit import (NSApplication, NSStatusBar, NSMenu, NSMenuItem, NSImage, 
                     NSColor, NSSize, NSRect, NSPoint, NSBezierPath, NSView)
 
@@ -13,6 +14,9 @@ class ClickableStatusView(NSView):
         if self:
             self.callback = callback
             self.is_hiding = False
+            self.animation_frame = 0
+            self.animation_timer = None
+            self.start_animation()
         return self
     
     def mouseDown_(self, event):
@@ -23,41 +27,156 @@ class ClickableStatusView(NSView):
         self.is_hiding = hiding
         self.setNeedsDisplay_(True)
     
+    def start_animation(self):
+        # 启动篮球动画定时器
+        self.animation_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            0.2, self, "updateAnimation:", None, True
+        )
+    
+    def updateAnimation_(self, sender):
+        try:
+            # 更新动画帧
+            self.animation_frame = (self.animation_frame + 1) % 8
+            # 招财猫动画（招财手势摆动）
+            self.setNeedsDisplay_(True)
+        except Exception as e:
+            print(f"Animation error: {e}")
+    
     def drawRect_(self, rect):
         if self.is_hiding:
-            # 隐藏状态：显示眼睛图标
-            self.drawEyeIcon()
+            # 隐藏状态：显示招财猫动画
+            self.drawLuckyCatAnimation()
         else:
-            # 显示状态：显示隐藏图标
-            self.drawHideIcon()
+            # 显示状态：显示招财猫动画
+            self.drawLuckyCatAnimation()
     
-    def drawEyeIcon(self):
-        # 绘制眼睛图标（显示状态）
-        NSColor.whiteColor().setFill()
-        # 眼睛轮廓
-        eye_rect = NSRect(NSPoint(3, 4), NSSize(16, 10))
-        eye_path = NSBezierPath.bezierPathWithOvalInRect_(eye_rect)
-        eye_path.setLineWidth_(1.5)
-        eye_path.stroke()
-        # 瞳孔
-        pupil_rect = NSRect(NSPoint(7, 6), NSSize(6, 6))
-        NSBezierPath.bezierPathWithOvalInRect_(pupil_rect).fill()
+    def drawLuckyCatAnimation(self):
+        try:
+            # 绘制招财猫动画
+            # 背景
+            NSColor.clearColor().setFill()
+            background_rect = NSBezierPath.bezierPathWithRect_(NSRect(NSPoint(0, 0), NSSize(22, 22)))
+            background_rect.fill()
+            
+            # 绘制招财猫
+            self.drawLuckyCat()
+            
+            # 绘制招财手势（带摆动动画）
+            self.drawLuckyPaw()
+        except Exception as e:
+            print(f"Draw error: {e}")
     
-    def drawHideIcon(self):
-        # 绘制隐藏图标（隐藏状态）
-        NSColor.whiteColor().setFill()
-        # 斜线
-        line1 = NSBezierPath.bezierPath()
-        line1.moveToPoint_(NSPoint(4, 4))
-        line1.lineToPoint_(NSPoint(18, 16))
-        line1.setLineWidth_(2)
-        line1.stroke()
-        
-        line2 = NSBezierPath.bezierPath()
-        line2.moveToPoint_(NSPoint(18, 4))
-        line2.lineToPoint_(NSPoint(4, 16))
-        line2.setLineWidth_(2)
-        line2.stroke()
+    def drawLuckyCat(self):
+        try:
+            # 绘制精致的招财猫
+            NSColor.whiteColor().setFill()
+            
+            # 身体（圆形）
+            body_rect = NSRect(NSPoint(6, 6), NSSize(10, 10))
+            NSBezierPath.bezierPathWithOvalInRect_(body_rect).fill()
+            
+            # 头部（圆形）
+            head_rect = NSRect(NSPoint(5, 12), NSSize(8, 8))
+            NSBezierPath.bezierPathWithOvalInRect_(head_rect).fill()
+            
+            # 猫耳朵（三角形）
+            ear1 = NSBezierPath.bezierPath()
+            ear1.moveToPoint_(NSPoint(5, 20))
+            ear1.lineToPoint_(NSPoint(3, 22))
+            ear1.lineToPoint_(NSPoint(7, 20))
+            ear1.closePath()
+            ear1.fill()
+            
+            ear2 = NSBezierPath.bezierPath()
+            ear2.moveToPoint_(NSPoint(9, 20))
+            ear2.lineToPoint_(NSPoint(11, 22))
+            ear2.lineToPoint_(NSPoint(7, 20))
+            ear2.closePath()
+            ear2.fill()
+            
+            # 眼睛（椭圆形，更可爱）
+            NSColor.blackColor().setFill()
+            eye1_rect = NSRect(NSPoint(6, 15), NSSize(1.5, 2))
+            NSBezierPath.bezierPathWithOvalInRect_(eye1_rect).fill()
+            
+            eye2_rect = NSRect(NSPoint(8.5, 15), NSSize(1.5, 2))
+            NSBezierPath.bezierPathWithOvalInRect_(eye2_rect).fill()
+            
+            # 鼻子（粉色小圆点）
+            NSColor.systemPinkColor().setFill()
+            nose_rect = NSRect(NSPoint(7.25, 14), NSSize(1, 1))
+            NSBezierPath.bezierPathWithOvalInRect_(nose_rect).fill()
+            
+            # 铃铛（金色）
+            NSColor.systemYellowColor().setFill()
+            bell_rect = NSRect(NSPoint(7.5, 8), NSSize(3, 3))
+            NSBezierPath.bezierPathWithOvalInRect_(bell_rect).fill()
+            
+            # 铃铛中心点
+            NSColor.blackColor().setFill()
+            bell_center = NSRect(NSPoint(8.25, 8.5), NSSize(0.5, 0.5))
+            NSBezierPath.bezierPathWithOvalInRect_(bell_center).fill()
+            
+            # 胡须（黑色细线）
+            NSColor.blackColor().setStroke()
+            whisker1 = NSBezierPath.bezierPath()
+            whisker1.moveToPoint_(NSPoint(4, 14))
+            whisker1.lineToPoint_(NSPoint(2, 14))
+            whisker1.setLineWidth_(0.5)
+            whisker1.stroke()
+            
+            whisker2 = NSBezierPath.bezierPath()
+            whisker2.moveToPoint_(NSPoint(4, 13))
+            whisker2.lineToPoint_(NSPoint(2, 13))
+            whisker2.setLineWidth_(0.5)
+            whisker2.stroke()
+            
+            whisker3 = NSBezierPath.bezierPath()
+            whisker3.moveToPoint_(NSPoint(10, 14))
+            whisker3.lineToPoint_(NSPoint(12, 14))
+            whisker3.setLineWidth_(0.5)
+            whisker3.stroke()
+            
+            whisker4 = NSBezierPath.bezierPath()
+            whisker4.moveToPoint_(NSPoint(10, 13))
+            whisker4.lineToPoint_(NSPoint(12, 13))
+            whisker4.setLineWidth_(0.5)
+            whisker4.stroke()
+            
+        except Exception as e:
+            print(f"Lucky cat draw error: {e}")
+    
+    def drawLuckyPaw(self):
+        try:
+            # 绘制招财手势（带摆动动画）
+            NSColor.whiteColor().setFill()
+            
+            # 招财手势位置（根据动画帧摆动）
+            paw_angle = (self.animation_frame * 20) % 40 - 20  # -20到20度摆动
+            paw_x = 18 + 1.5 * (paw_angle / 20)  # 手势位置随角度变化
+            
+            # 绘制招财手势（圆形爪子）
+            paw_rect = NSRect(NSPoint(paw_x - 1, 4), NSSize(2, 2))
+            NSBezierPath.bezierPathWithOvalInRect_(paw_rect).fill()
+            
+            # 绘制招财手势的爪子细节
+            NSColor.blackColor().setFill()
+            paw_detail1 = NSRect(NSPoint(paw_x - 0.5, 4.5), NSSize(0.3, 0.3))
+            NSBezierPath.bezierPathWithOvalInRect_(paw_detail1).fill()
+            
+            paw_detail2 = NSRect(NSPoint(paw_x + 0.2, 4.5), NSSize(0.3, 0.3))
+            NSBezierPath.bezierPathWithOvalInRect_(paw_detail2).fill()
+            
+            # 绘制招财手势的连接线
+            NSColor.whiteColor().setStroke()
+            connection = NSBezierPath.bezierPath()
+            connection.moveToPoint_(NSPoint(16, 8))
+            connection.lineToPoint_(NSPoint(paw_x, 5))
+            connection.setLineWidth_(1.5)
+            connection.stroke()
+            
+        except Exception as e:
+            print(f"Lucky paw draw error: {e}")
 
 
 class DozerStatusIcon(NSObject):
@@ -141,6 +260,9 @@ class DozerStatusIcon(NSObject):
     def quit_(self, sender):
         if self.is_hiding_others:
             self.show_others()
+        # 停止动画定时器
+        if hasattr(self.controller_view, 'animation_timer') and self.controller_view.animation_timer:
+            self.controller_view.animation_timer.invalidate()
         NSApplication.sharedApplication().terminate_(None)
 
 
