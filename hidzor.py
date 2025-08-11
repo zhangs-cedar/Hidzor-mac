@@ -47,11 +47,6 @@ class ClickableStatusView(NSView):
             # 确保图像是RGB格式
             if len(numpy_array.shape) == 3:
                 height, width, channels = numpy_array.shape
-                if channels == 4:  # RGBA
-                    # 转换为RGB
-                    rgb_array = numpy_array[:, :, :3]
-                else:
-                    rgb_array = numpy_array
                 
                 # 创建NSImage
                 image = NSImage.alloc().initWithSize_(NSSize(22, 22))
@@ -68,13 +63,28 @@ class ClickableStatusView(NSView):
                         src_y = int(y * scale_y)
                         
                         if src_x < width and src_y < height:
-                            r, g, b = rgb_array[src_y, src_x]
-                            color = NSColor.colorWithCalibratedRed_green_blue_alpha_(
-                                r/255.0, g/255.0, b/255.0, 1.0
-                            )
-                            color.setFill()
-                            rect = NSRect(NSPoint(x, 21-y), NSSize(1, 1))
-                            NSBezierPath.bezierPathWithRect_(rect).fill()
+                            if channels == 4:  # RGBA
+                                r, g, b, a = numpy_array[src_y, src_x]
+                                # 检测白色背景 (RGB值都接近255)
+                                if r > 100 and g > 100 and b > 100:
+                                    alpha = 0.0  # 透明
+                                else:
+                                    alpha = a / 255.0
+                            else:  # RGB
+                                r, g, b = numpy_array[src_y, src_x]
+                                # 检测白色背景
+                                if r > 100 and g > 100 and b > 100:
+                                    alpha = 0.0  # 透明
+                                else:
+                                    alpha = 1.0
+                            
+                            if alpha > 0:  # 只绘制非透明像素，白色背景透明
+                                color = NSColor.colorWithCalibratedRed_green_blue_alpha_(
+                                    1, 1, 1, alpha
+                                )
+                                color.setFill()
+                                rect = NSRect(NSPoint(x, 21-y), NSSize(1, 1))
+                                NSBezierPath.bezierPathWithRect_(rect).fill()
                 
                 image.unlockFocus()
                 return image
