@@ -137,12 +137,6 @@ class DozerStatusIcon(NSObject):
     def setupMenu(self):
         menu = NSMenu.alloc().init()
         
-        show_all = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("显示所有", "showAll:", "")
-        show_all.setTarget_(self)
-        menu.addItem_(show_all)
-        
-        menu.addItem_(NSMenuItem.separatorItem())
-        
         quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("退出", "quit:", "q")
         quit_item.setTarget_(self)
         menu.addItem_(quit_item)
@@ -171,7 +165,7 @@ class DozerStatusIcon(NSObject):
             self.separator.setLength_(10000.0)
             self.separator.setImage_(None)
             self.separator.setTarget_(self)
-            self.separator.setAction_("showAll:")
+            self.separator.setAction_("showOthers:")
             self.controller_view.setHidingState_(True)
     
     def showOthers(self):
@@ -183,9 +177,7 @@ class DozerStatusIcon(NSObject):
             self.separator.setAction_(None)
             self.controller_view.setHidingState_(False)
     
-    @objc.IBAction
-    def showAll_(self, sender):
-        self.showOthers()
+
     
     @objc.IBAction
     def quit_(self, sender):
