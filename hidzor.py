@@ -4,9 +4,44 @@
 import sys
 import objc
 import imageio
+import yaml
+import os
 from Foundation import NSObject, NSTimer, NSData, NSURL
 from AppKit import (NSApplication, NSStatusBar, NSMenu, NSMenuItem, NSImage, 
                     NSColor, NSSize, NSRect, NSPoint, NSBezierPath, NSView)
+
+def load_config():
+    """加载配置文件"""
+    try:
+        config_path = "config.yaml"
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                return config
+        else:
+            # 默认配置
+            return {
+                "current_icon": "icons/icons.gif",
+                "available_icons": [
+                    "icons/icons.gif",
+                    "icons/icons8-kawaii.gif", 
+                    "icons/icons8-螃蟹.gif"
+                ]
+            }
+    except Exception as e:
+        print(f"配置加载错误: {e}")
+        return {"current_icon": "icons/icons.gif"}
+
+def save_config(config):
+    """保存配置文件"""
+    try:
+        config_path = "config.yaml"
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+        return True
+    except Exception as e:
+        print(f"配置保存错误: {e}")
+        return False
 
 class ClickableStatusView(NSView):
     def initWithFrame_callback_(self, frame, callback):
@@ -24,7 +59,13 @@ class ClickableStatusView(NSView):
     
     def loadGifFrames(self):
         try:
-            gif_path = "icons.gif"
+            config = load_config()
+            gif_path = config.get("current_icon", "icons/icons.gif")
+            
+            if not os.path.exists(gif_path):
+                print(f"图标文件不存在: {gif_path}")
+                gif_path = "icons/icons.gif"  # 回退到默认图标
+            
             gif_reader = imageio.get_reader(gif_path)
             self.gif_frames = []
             
@@ -34,10 +75,22 @@ class ClickableStatusView(NSView):
                     self.gif_frames.append(frame_image)
             
             gif_reader.close()
-            print(f"Loaded {len(self.gif_frames)} GIF frames")
+            print(f"已加载图标: {gif_path}, 共 {len(self.gif_frames)} 帧")
             
         except Exception as e:
-            print(f"GIF load error: {e}")
+            print(f"GIF加载错误: {e}")
+            # 尝试加载默认图标
+            try:
+                gif_reader = imageio.get_reader("icons/icons.gif")
+                self.gif_frames = []
+                for frame in gif_reader:
+                    frame_image = self.numpy_to_nsimage(frame)
+                    if frame_image:
+                        self.gif_frames.append(frame_image)
+                gif_reader.close()
+                print("已加载默认图标")
+            except Exception as e2:
+                print(f"默认图标加载也失败: {e2}")
     
     def numpy_to_nsimage(self, numpy_array):
         try:
@@ -133,15 +186,48 @@ class DozerStatusIcon(NSObject):
             NSRect(NSPoint(0, 0), NSSize(22, 22)), self.toggleHiding
         )
         
-        if hasattr(self, 'menu'):
-            self.controller_view.menu = self.menu
-            self.controller.setMenu_(self.menu)
+        # 设置菜单
+        self.controller_view.menu = self.menu
+        self.controller.setMenu_(self.menu)
         
         self.controller.setView_(self.controller_view)
         self.setupSeparatorIcon()
     
     def setupMenu(self):
         menu = NSMenu.alloc().init()
+        
+        # 图标选择子菜单
+        icon_menu = NSMenu.alloc().init()
+        config = load_config()
+        current_icon = config.get("current_icon", "icons/icons.gif")
+        available_icons = config.get("available_icons", ["icons/icons.gif"])
+        
+        for icon_path in available_icons:
+            icon_name = os.path.basename(icon_path)
+            icon_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(icon_name, "switchIcon:", "")
+            icon_item.setTarget_(self)
+            icon_item.setRepresentedObject_(icon_path)
+            
+            # 设置当前选中的图标
+            if icon_path == current_icon:
+                icon_item.setState_(1)  # NSOnState
+            else:
+                icon_item.setState_(0)  # NSOffState
+                
+            icon_menu.addItem_(icon_item)
+        
+        # 图标选择菜单项
+        icon_menu_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("选择图标", "", "")
+        icon_menu_item.setSubmenu_(icon_menu)
+        menu.addItem_(icon_menu_item)
+        
+        menu.addItem_(NSMenuItem.separatorItem())
+        
+        reload_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("重新加载图标", "reloadIcon:", "r")
+        reload_item.setTarget_(self)
+        menu.addItem_(reload_item)
+        
+        menu.addItem_(NSMenuItem.separatorItem())
         
         quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("退出", "quit:", "q")
         quit_item.setTarget_(self)
@@ -182,6 +268,56 @@ class DozerStatusIcon(NSObject):
             self.separator.setTarget_(None)
             self.separator.setAction_(None)
             self.controller_view.setHidingState_(False)
+    
+    @objc.IBAction
+    def switchIcon_(self, sender):
+        """切换图标"""
+        try:
+            new_icon_path = sender.representedObject()
+            if new_icon_path and os.path.exists(new_icon_path):
+                # 更新配置
+                config = load_config()
+                config["current_icon"] = new_icon_path
+                if save_config(config):
+                    # 重新加载图标
+                    self.controller_view.loadGifFrames()
+                    print(f"已切换到图标: {new_icon_path}")
+                    
+                    # 更新菜单状态
+                    self.updateMenuStates()
+                else:
+                    print("配置保存失败")
+            else:
+                print(f"图标文件不存在: {new_icon_path}")
+        except Exception as e:
+            print(f"切换图标失败: {e}")
+    
+    def updateMenuStates(self):
+        """更新菜单选中状态"""
+        try:
+            config = load_config()
+            current_icon = config.get("current_icon", "icons/icons.gif")
+            
+            # 更新图标选择子菜单的状态
+            icon_menu = self.menu.itemAtIndex_(0).submenu()
+            for i in range(icon_menu.numberOfItems()):
+                item = icon_menu.itemAtIndex_(i)
+                icon_path = item.representedObject()
+                if icon_path == current_icon:
+                    item.setState_(1)  # NSOnState
+                else:
+                    item.setState_(0)  # NSOffState
+        except Exception as e:
+            print(f"更新菜单状态失败: {e}")
+    
+    @objc.IBAction
+    def reloadIcon_(self, sender):
+        """重新加载图标"""
+        try:
+            self.controller_view.loadGifFrames()
+            print("图标已重新加载")
+        except Exception as e:
+            print(f"重新加载图标失败: {e}")
     
     @objc.IBAction
     def quit_(self, sender):
