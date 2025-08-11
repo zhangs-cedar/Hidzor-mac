@@ -1,0 +1,5 @@
+pyobjc-framework-Cocoa>=9.0
+pyobjc-framework-Quartz>=9.0
+imageio>=2.31.0
+PyYAML>=6.0
+pyinstaller>=5.0

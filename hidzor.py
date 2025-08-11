@@ -10,43 +10,76 @@ from Foundation import NSObject, NSTimer, NSData, NSURL
 from AppKit import (NSApplication, NSStatusBar, NSMenu, NSMenuItem, NSImage, 
                     NSColor, NSSize, NSRect, NSPoint, NSBezierPath, NSView)
 
+def get_resource_path(relative_path):
+    """获取资源文件的绝对路径"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
 def load_config():
     """加载配置文件"""
-    config_path = "config.yaml"
-    if os.path.exists(config_path):
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-            # 动态扫描icons文件夹下的所有gif文件
-            config['available_icons'] = scan_gif_files()
-            return config
+    # 首先尝试从用户目录加载配置
+    home_dir = os.path.expanduser("~")
+    user_config_path = os.path.join(home_dir, ".hidzor", "config.yaml")
+    
+    if os.path.exists(user_config_path):
+        config_path = user_config_path
     else:
-        # 默认配置
-        return {
-            "current_icon": "icons/icons.gif",
-            "available_icons": scan_gif_files()
-        }
+        # 回退到资源目录的默认配置
+        config_path = get_resource_path("config.yaml")
+    
+    # 检查文件是否存在且不是目录
+    if os.path.exists(config_path) and os.path.isfile(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                # 动态扫描icons文件夹下的所有gif文件
+                config['available_icons'] = scan_gif_files()
+                return config
+        except Exception as e:
+            print(f"配置文件读取错误: {e}")
+    
+    # 默认配置
+    return {
+        "current_icon": "icons/icons.gif",
+        "available_icons": scan_gif_files()
+    }
 
 def scan_gif_files():
     """扫描icons文件夹下的所有gif文件"""
     gif_files = []
-    icons_dir = "icons"
+    icons_dir = get_resource_path("icons")
     
     if os.path.exists(icons_dir) and os.path.isdir(icons_dir):
         for filename in os.listdir(icons_dir):
             if filename.lower().endswith('.gif'):
-                gif_files.append(os.path.join(icons_dir, filename))
+                # 验证文件是否真实存在
+                full_path = os.path.join(icons_dir, filename)
+                if os.path.isfile(full_path):
+                    gif_files.append(os.path.join("icons", filename))
     
     # 如果没有找到gif文件，返回默认图标
     if not gif_files:
         gif_files = ["icons/icons.gif"]
     
+    print(f"扫描到 {len(gif_files)} 个图标文件: {gif_files}")
     return sorted(gif_files)
 
 
 def save_config(config):
     """保存配置文件"""
     try:
-        config_path = "config.yaml"
+        # 配置文件保存到用户目录
+        home_dir = os.path.expanduser("~")
+        config_dir = os.path.join(home_dir, ".hidzor")
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
+        
+        config_path = os.path.join(config_dir, "config.yaml")
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
         return True
@@ -73,11 +106,21 @@ class ClickableStatusView(NSView):
             config = load_config()
             gif_path = config.get("current_icon", "icons/icons.gif")
             
-            if not os.path.exists(gif_path):
-                print(f"图标文件不存在: {gif_path}")
-                gif_path = "icons/icons.gif"  # 回退到默认图标
+            # 使用资源路径获取完整的图标路径
+            full_gif_path = get_resource_path(gif_path)
             
-            gif_reader = imageio.get_reader(gif_path)
+            if not os.path.exists(full_gif_path):
+                print(f"图标文件不存在，尝试默认图标: {gif_path}")
+                full_gif_path = get_resource_path("icons/icons.gif")  # 回退到默认图标
+                
+                # 如果默认图标也不存在，尝试第一个可用图标
+                if not os.path.exists(full_gif_path):
+                    available_icons = scan_gif_files()
+                    if available_icons:
+                        full_gif_path = get_resource_path(available_icons[0])
+                        print(f"使用第一个可用图标: {available_icons[0]}")
+            
+            gif_reader = imageio.get_reader(full_gif_path)
             self.gif_frames = []
             
             for frame_num, frame in enumerate(gif_reader):
@@ -92,16 +135,21 @@ class ClickableStatusView(NSView):
             print(f"GIF加载错误: {e}")
             # 尝试加载默认图标
             try:
-                gif_reader = imageio.get_reader("icons/icons.gif")
-                self.gif_frames = []
-                for frame in gif_reader:
-                    frame_image = self.numpy_to_nsimage(frame)
-                    if frame_image:
-                        self.gif_frames.append(frame_image)
-                gif_reader.close()
-                print("已加载默认图标")
+                available_icons = scan_gif_files()
+                if available_icons:
+                    default_path = get_resource_path(available_icons[0])
+                    gif_reader = imageio.get_reader(default_path)
+                    self.gif_frames = []
+                    for frame in gif_reader:
+                        frame_image = self.numpy_to_nsimage(frame)
+                        if frame_image:
+                            self.gif_frames.append(frame_image)
+                    gif_reader.close()
+                    print(f"已加载备用图标: {available_icons[0]}")
+                else:
+                    print("没有可用的图标文件")
             except Exception as e2:
-                print(f"默认图标加载也失败: {e2}")
+                print(f"备用图标加载也失败: {e2}")
     
     def numpy_to_nsimage(self, numpy_array):
         try:
@@ -213,7 +261,17 @@ class DozerStatusIcon(NSObject):
         current_icon = config.get("current_icon", "icons/icons.gif")
         available_icons = scan_gif_files()  # 动态扫描
         
+        # 验证当前图标是否在可用列表中
+        if current_icon not in available_icons:
+            current_icon = available_icons[0] if available_icons else "icons/icons.gif"
+        
         for icon_path in available_icons:
+            # 验证图标文件是否真实存在
+            full_icon_path = get_resource_path(icon_path)
+            if not os.path.exists(full_icon_path):
+                print(f"跳过不存在的图标: {icon_path}")
+                continue
+                
             icon_name = os.path.basename(icon_path)
             icon_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(icon_name, "switchIcon:", "")
             icon_item.setTarget_(self)
@@ -279,21 +337,26 @@ class DozerStatusIcon(NSObject):
         """切换图标"""
         try:
             new_icon_path = sender.representedObject()
-            if new_icon_path and os.path.exists(new_icon_path):
-                # 更新配置
-                config = load_config()
-                config["current_icon"] = new_icon_path
-                if save_config(config):
-                    # 重新加载图标
-                    self.controller_view.loadGifFrames()
-                    print(f"已切换到图标: {new_icon_path}")
-                    
-                    # 更新菜单状态
-                    self.updateMenuStates()
+            if new_icon_path:
+                # 使用资源路径检查文件是否存在
+                full_icon_path = get_resource_path(new_icon_path)
+                if os.path.exists(full_icon_path):
+                    # 更新配置
+                    config = load_config()
+                    config["current_icon"] = new_icon_path
+                    if save_config(config):
+                        # 重新加载图标
+                        self.controller_view.loadGifFrames()
+                        print(f"已切换到图标: {new_icon_path}")
+                        
+                        # 更新菜单状态
+                        self.updateMenuStates()
+                    else:
+                        print("配置保存失败")
                 else:
-                    print("配置保存失败")
+                    print(f"图标文件不存在: {full_icon_path}")
             else:
-                print(f"图标文件不存在: {new_icon_path}")
+                print("无效的图标路径")
         except Exception as e:
             print(f"切换图标失败: {e}")
     
