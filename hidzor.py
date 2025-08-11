@@ -14,7 +14,6 @@ class ClickableStatusView(NSView):
         if self:
             self.callback = callback
             self.is_hiding = False
-            self.frame = 0
             self.gif_frames = []
             self.current_frame = 0
             self.loadGifFrames()
@@ -25,13 +24,11 @@ class ClickableStatusView(NSView):
     
     def loadGifFrames(self):
         try:
-            # 使用imageio加载GIF文件
             gif_path = "icons.gif"
             gif_reader = imageio.get_reader(gif_path)
             self.gif_frames = []
             
             for frame_num, frame in enumerate(gif_reader):
-                # 将numpy数组转换为NSImage
                 frame_image = self.numpy_to_nsimage(frame)
                 if frame_image:
                     self.gif_frames.append(frame_image)
@@ -44,41 +41,35 @@ class ClickableStatusView(NSView):
     
     def numpy_to_nsimage(self, numpy_array):
         try:
-            # 确保图像是RGB格式
             if len(numpy_array.shape) == 3:
                 height, width, channels = numpy_array.shape
                 
-                # 创建NSImage
                 image = NSImage.alloc().initWithSize_(NSSize(22, 22))
                 image.lockFocus()
                 
-                # 缩放并绘制图像
                 scale_x = width / 22.0
                 scale_y = height / 22.0
                 
                 for y in range(22):
                     for x in range(22):
-                        # 计算原图对应位置
                         src_x = int(x * scale_x)
                         src_y = int(y * scale_y)
                         
                         if src_x < width and src_y < height:
                             if channels == 4:  # RGBA
                                 r, g, b, a = numpy_array[src_y, src_x]
-                                # 检测白色背景 (RGB值都接近255)
                                 if r > 100 and g > 100 and b > 100:
-                                    alpha = 0.0  # 透明
+                                    alpha = 0.0
                                 else:
                                     alpha = a / 255.0
                             else:  # RGB
                                 r, g, b = numpy_array[src_y, src_x]
-                                # 检测白色背景
                                 if r > 100 and g > 100 and b > 100:
-                                    alpha = 0.0  # 透明
+                                    alpha = 0.0
                                 else:
                                     alpha = 1.0
                             
-                            if alpha > 0:  # 只绘制非透明像素，白色背景透明
+                            if alpha > 0:
                                 color = NSColor.colorWithCalibratedRed_green_blue_alpha_(
                                     1, 1, 1, alpha
                                 )
@@ -110,94 +101,20 @@ class ClickableStatusView(NSView):
         try:
             if self.gif_frames:
                 self.current_frame = (self.current_frame + 1) % len(self.gif_frames)
-            else:
-                self.frame = (self.frame + 1) % 8
             self.setNeedsDisplay_(True)
         except Exception as e:
             print(f"Animation error: {e}")
     
     def drawRect_(self, rect):
-        if self.gif_frames:
-            self.drawGifIcon()
-        else:
-            self.drawCat()
+        self.drawGifIcon()
     
     def drawGifIcon(self):
         try:
-            if self.current_frame < len(self.gif_frames):
+            if self.gif_frames and self.current_frame < len(self.gif_frames):
                 frame_image = self.gif_frames[self.current_frame]
                 frame_image.drawInRect_(NSRect(NSPoint(0, 0), NSSize(22, 22)))
         except Exception as e:
             print(f"GIF draw error: {e}")
-            # 如果GIF绘制失败，回退到猫头
-            self.drawCat()
-    
-    def drawCat(self):
-        try:
-            # 背景
-            NSColor.clearColor().setFill()
-            NSBezierPath.bezierPathWithRect_(NSRect(NSPoint(0, 0), NSSize(22, 22))).fill()
-            
-            # 猫身体
-            NSColor.whiteColor().setFill()
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(6, 6), NSSize(10, 10))).fill()
-            
-            # 猫头
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(5, 12), NSSize(8, 8))).fill()
-            
-            # 耳朵
-            for i, points in enumerate([[(5, 20), (3, 22), (7, 20)], [(9, 20), (11, 22), (7, 20)]]):
-                ear = NSBezierPath.bezierPath()
-                ear.moveToPoint_(NSPoint(*points[0]))
-                ear.lineToPoint_(NSPoint(*points[1]))
-                ear.lineToPoint_(NSPoint(*points[2]))
-                ear.closePath()
-                ear.fill()
-            
-            # 眼睛
-            NSColor.blackColor().setFill()
-            for x in [6, 8.5]:
-                NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(x, 15), NSSize(1.5, 2))).fill()
-            
-            # 鼻子
-            NSColor.systemPinkColor().setFill()
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(7.25, 14), NSSize(1, 1))).fill()
-            
-            # 铃铛
-            NSColor.systemYellowColor().setFill()
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(7.5, 8), NSSize(3, 3))).fill()
-            NSColor.blackColor().setFill()
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(8.25, 8.5), NSSize(0.5, 0.5))).fill()
-            
-            # 胡须
-            NSColor.blackColor().setStroke()
-            for whisker in [(4, 14, 2), (4, 13, 2), (10, 14, 12), (10, 13, 12)]:
-                path = NSBezierPath.bezierPath()
-                path.moveToPoint_(NSPoint(whisker[0], whisker[1]))
-                path.lineToPoint_(NSPoint(whisker[2], whisker[1]))
-                path.setLineWidth_(0.5)
-                path.stroke()
-            
-            # 招财手势
-            paw_angle = (self.frame * 20) % 40 - 20
-            paw_x = 18 + 1.5 * (paw_angle / 20)
-            
-            NSColor.whiteColor().setFill()
-            NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(paw_x - 1, 4), NSSize(2, 2))).fill()
-            
-            NSColor.blackColor().setFill()
-            for dx in [-0.5, 0.2]:
-                NSBezierPath.bezierPathWithOvalInRect_(NSRect(NSPoint(paw_x + dx, 4.5), NSSize(0.3, 0.3))).fill()
-            
-            NSColor.whiteColor().setStroke()
-            connection = NSBezierPath.bezierPath()
-            connection.moveToPoint_(NSPoint(16, 8))
-            connection.lineToPoint_(NSPoint(paw_x, 5))
-            connection.setLineWidth_(1.5)
-            connection.stroke()
-            
-        except Exception as e:
-            print(f"Draw error: {e}")
 
 
 class DozerStatusIcon(NSObject):
@@ -265,8 +182,6 @@ class DozerStatusIcon(NSObject):
             self.separator.setTarget_(None)
             self.separator.setAction_(None)
             self.controller_view.setHidingState_(False)
-    
-
     
     @objc.IBAction
     def quit_(self, sender):
